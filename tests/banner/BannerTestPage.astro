@@ -16,11 +16,22 @@
 // The marker string BANNER_TEST_MARKER_7c41e0d9 exists only in test-only code;
 // run_regression.py fails if it appears anywhere in the production dist/ (and
 // checks that it does appear in the test build, so the check cannot go vacuous).
+//
+// With ?fallback=1 the inline script also deletes the View Transition API and
+// moveBefore() before the router module loads (it reads them once, at load), so
+// navigationFallbackChecks exercise the router's fallback swap: the path Safari
+// and older browsers take. The link below leads to /__banner-test/no-banner/
+// (NoBannerTestPage.astro), a test-only page without a banner.
 import BaseLayout from '../../src/layouts/BaseLayout.astro';
 ---
 <BaseLayout title="Banner test page">
   <h1>Banner test page</h1>
+  <p><a id="to-no-banner" href="/__banner-test/no-banner/">Page without a banner</a></p>
   <script is:inline>
+    if (new URLSearchParams(location.search).has('fallback')) {
+      delete Document.prototype.startViewTransition;
+      delete Element.prototype.moveBefore;
+    }
     window.__bannerTestMarker = 'BANNER_TEST_MARKER_7c41e0d9';
     window.__bannerTestErrors = [];
     window.addEventListener('error', (event) => {
@@ -32,6 +43,20 @@ import BaseLayout from '../../src/layouts/BaseLayout.astro';
     window.addEventListener('unhandledrejection', (event) => {
       window.__bannerTestErrors.push(`unhandled rejection: ${String(event.reason)}`);
     });
+    // Counts initBoatBanner() runs on the real banner canvas (each run adds one
+    // 'pointerdown' listener to it) without touching the module. The window
+    // survives client-side navigation, so navigationChecks reads it after
+    // navigating away from this page.
+    window.__bannerInitCount = 0;
+    (() => {
+      const addListener = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (type, ...rest) {
+        if (type === 'pointerdown' && this instanceof HTMLCanvasElement && this.id === 'boat-banner') {
+          window.__bannerInitCount++;
+        }
+        return addListener.call(this, type, ...rest);
+      };
+    })();
   </script>
 </BaseLayout>
 

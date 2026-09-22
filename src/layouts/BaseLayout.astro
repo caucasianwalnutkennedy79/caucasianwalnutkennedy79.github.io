@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from 'astro:transitions';
 import BoatBanner from '../components/BoatBanner.astro';
 import { NAV, SITE_NAME, TAGLINE } from '../consts';
 import '../styles/global.css';
@@ -11,6 +12,8 @@ interface Props {
   noindex?: boolean;
 }
 
+// <ClientRouter /> below: client-side navigation, so the boat banner
+// (transition:persist in BoatBanner.astro) keeps sailing between pages.
 const { title, description = TAGLINE, noindex = false } = Astro.props;
 const pageTitle = title ? `${title} · ${SITE_NAME}` : `${SITE_NAME} · ${TAGLINE}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -30,6 +33,7 @@ const ariaCurrent = (href: string) =>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <ClientRouter />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>

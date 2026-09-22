@@ -14,9 +14,10 @@ npm run test:banner
 which does:
 
 1. `npm run build` — the production build in `dist/`.
-2. `BANNER_TEST=1 astro build --outDir .banner-test-dist` — the same site plus one
-   test-only page, `/__banner-test/`, injected by `astro.config.mjs` only when
-   `BANNER_TEST=1`. It renders the real layout (real `BoatBanner` component, global
+2. `BANNER_TEST=1 astro build --outDir .banner-test-dist` — the same site plus two
+   test-only pages, `/__banner-test/` and `/__banner-test/no-banner/` (a page with
+   `<ClientRouter />` but no banner), injected by `astro.config.mjs` only when
+   `BANNER_TEST=1`. The first renders the real layout (real `BoatBanner` component, global
    CSS and colour tokens) and puts `initBoatBanner` from `src/scripts/boat-banner.js`
    on `window` — the module the component itself imports, bundled into one shared
    chunk. The `persistsAcrossReload` check reloads the shipped home page `/`.
@@ -31,7 +32,21 @@ which does:
 Besides the prototype's checks on a harness-built banner, `componentChecks` drive the
 test page's real `<BoatBanner />` as initialized by the component's own script
 (canvas backing store sized, tap queues a waypoint, telemetry updates, clear stops the
-route, the ship select persists). Page errors are collected from the start of page
+route, the ship select persists). `navigationChecks` load the test page in a second,
+visible frame with the real `requestAnimationFrame`, start a three-waypoint voyage and
+click real links (nav → `/research/` → a work detail page → back → the detail page
+again → the test page → the no-banner page → the test page) through `<ClientRouter />`:
+no full document load, the same canvas, one initialization, a continuous voyage with the
+ship kept (judged only on frames drawn after the new page loaded), the loop still running, pausing
+off-screen and resizing, no banner transition animation, updated title / canonical /
+`aria-current`, the route announcement, scroll reset and restore, the skip link, and
+Copy BibTeX on both detail visits; after the no-banner page, the fresh banner is
+initialized (by the component's `astro:page-load` hook), runs and queues a tap.
+`navigationFallbackChecks` repeat all of this with `?fallback=1`, where the test page
+deletes `document.startViewTransition` and `Element.prototype.moveBefore` before the
+router loads, so the router takes the fallback swap Safari and older browsers use
+(`fallbackPathTaken` confirms it). The real banner is not in test mode, so its state is
+read from its own canvas draw calls. Page errors are collected from the start of page
 load by an inline script on the test page; any error, or a missing collector, fails
 the run.
 

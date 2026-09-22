@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import { parseWorkDate } from './src/lib/work-date.mjs';
 
-// Test-only page for tests/banner/ (see tests/banner/README.md). It is injected
-// only when BANNER_TEST=1, so production builds (`npm run build`, CI) never
-// contain it.
+// Test-only pages for tests/banner/ (see tests/banner/README.md). They are
+// injected only when BANNER_TEST=1, so production builds (`npm run build`, CI)
+// never contain them.
 /** @type {import('astro').AstroIntegration} */
 const bannerTestPage = {
   name: 'banner-test-page',
@@ -15,6 +15,10 @@ const bannerTestPage = {
       injectRoute({
         pattern: '/__banner-test',
         entrypoint: './tests/banner/BannerTestPage.astro',
+      });
+      injectRoute({
+        pattern: '/__banner-test/no-banner',
+        entrypoint: './tests/banner/NoBannerTestPage.astro',
       });
     },
   },
@@ -47,5 +51,7 @@ const worksDateCheck = {
 // https://astro.build/config
 export default defineConfig({
   site: 'https://wensenliu.com',
+  // Explicit (these match the <ClientRouter /> defaults): prefetch every same-origin link on hover.
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [worksDateCheck, ...(process.env.BANNER_TEST === '1' ? [bannerTestPage] : [])],
 });

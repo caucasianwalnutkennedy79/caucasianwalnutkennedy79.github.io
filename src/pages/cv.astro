@@ -12,7 +12,7 @@ const publications = ofKind(await getWorks(), 'paper', 'workshop');
 ---
 <BaseLayout title="CV" description="Curriculum vitae of Wensen Liu.">
   <h1>CV</h1>
-  {hasPdf && <p><a href="/cv.pdf" download>Download PDF</a></p>}
+  {hasPdf && <p><a href="/cv.pdf" download data-astro-prefetch="false">Download PDF</a></p>}
 
   <section class="cv-section" aria-labelledby="cv-education">
     <h2 id="cv-education">Education</h2>

@@ -6,7 +6,8 @@
   Differences: the main iframe loads the test-only page /__banner-test/ (real layout +
   window.initBoatBanner from src/scripts/boat-banner.js), the reload-persistence probe loads
   the shipped home page "/", page errors come from the test page's early collector, and
-  componentChecks exercise the page's real, component-initialized <BoatBanner />.
+  componentChecks exercise the page's real, component-initialized <BoatBanner />, and
+  navigationChecks follow real links through <ClientRouter /> in a second, visible frame.
   Served by tests/banner/run_regression.py; never part of dist/.
 -->
 <iframe id="source" src="/__banner-test/" width="1200" height="700"></iframe>
@@ -413,6 +414,305 @@
 
       shipChecks.persistsAcrossReload = await checkPersistenceAcrossReload();
 
+      // Client-side navigation (<ClientRouter /> + transition:persist) in a fresh, visible
+      // frame with the real requestAnimationFrame: the component-initialized banner must keep
+      // sailing across real link clicks. The module is not in test mode there, so its state
+      // is observed through its own draw calls: drawRoute() strokes one arc of radius 5 or
+      // 3.5 per queued waypoint, the pirate ship one main-mast arc of radius 46 * 0.049, and
+      // drawBoat() calls translate(state.x, state.y) once per draw.
+      // With fallback, the test page deletes the View Transition API and moveBefore() before
+      // the router loads (see BannerTestPage.astro), so the router takes its fallback swap.
+      async function checkNavigationPersistence({ fallback = false } = {}) {
+        const checks = {};
+        const info = {};
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const frame = document.createElement('iframe');
+        frame.width = '1200';
+        frame.height = '450';
+        frame.style.cssText = 'position:fixed;left:0;top:0;border:0;z-index:10;background:#fff';
+        win.localStorage.removeItem(storageKey);
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('navigation frame load timed out')), 10000);
+          frame.addEventListener('load', () => { clearTimeout(timer); resolve(); }, { once: true });
+          frame.src = `/__banner-test/?navigation=1${fallback ? '&fallback=1' : ''}`;
+          document.body.append(frame);
+        });
+        let fullLoads = 0;
+        frame.addEventListener('load', () => fullLoads++);
+        const nwin = frame.contentWindow;
+        const ndoc = frame.contentDocument;
+        const errors = nwin.__bannerTestErrors;
+        try {
+          const pageLoad = () => new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('astro:page-load timed out')), 10000);
+            ndoc.addEventListener('astro:page-load', () => { clearTimeout(timer); resolve(); },
+              { once: true });
+          });
+          const link = selector => {
+            const element = ndoc.querySelector(selector);
+            if (!element) throw new Error(`navigation check: no ${selector} on ${nwin.location.pathname}`);
+            return element;
+          };
+          const skipLinkResult = async () => {
+            nwin.scrollTo(0, 0);
+            link('.skip-link').click();
+            await wait(100);
+            return { hash: nwin.location.hash, active: ndoc.activeElement?.id || ndoc.activeElement?.localName };
+          };
+
+          // The skip link on a full page load, as the baseline for after navigation.
+          const skipBaseline = await skipLinkResult();
+          nwin.scrollTo(0, 0);
+
+          // Records a banner canvas's draws as samples and taps it.
+          const watchCanvas = target => {
+            const ctx = target.getContext('2d');
+            const drawn = [];
+            let routeMarks = 0;
+            let mastMarks = 0;
+            const mastRadius = 46 * 0.049;
+            const arc = ctx.arc;
+            const translate = ctx.translate;
+            ctx.arc = function (x, y, radius, ...rest) {
+              if (radius === 5 || radius === 3.5) routeMarks++;
+              else if (radius === mastRadius) mastMarks++;
+              return arc.call(this, x, y, radius, ...rest);
+            };
+            ctx.translate = function (x, y) {
+              drawn.push({ t: nwin.performance.now(), x, y, queue: routeMarks, pirate: mastMarks > 0 });
+              routeMarks = 0;
+              mastMarks = 0;
+              return translate.call(this, x, y);
+            };
+            target.setPointerCapture = () => {};
+            target.hasPointerCapture = () => false;
+            const tapTarget = (fx, fy) => {
+              const rect = target.getBoundingClientRect();
+              const init = { bubbles: true, cancelable: true, pointerId: 51, pointerType: 'mouse',
+                isPrimary: true, button: 0, clientX: rect.left + rect.width * fx,
+                clientY: rect.top + rect.height * fy };
+              target.dispatchEvent(new nwin.PointerEvent('pointerdown', init));
+              target.dispatchEvent(new nwin.PointerEvent('pointerup', init));
+            };
+            return { samples: drawn, tap: tapTarget };
+          };
+
+          const canvas = ndoc.querySelector('#boat-banner');
+          const banner = canvas.closest('.banner');
+          const select = banner.querySelector('.banner-ship-select');
+          const { samples, tap } = watchCanvas(canvas);
+
+          select.value = 'pirate';
+          select.dispatchEvent(new nwin.Event('change', { bubbles: true }));
+          tap(0.85, 0.3);
+          tap(0.5, 0.8);
+          tap(0.12, 0.3);
+          await wait(600);
+          const before = samples.at(-1);
+          checks.voyageStarted = samples.length > 10 && before.queue === 3 && before.pirate;
+
+          // Page 1 -> Research by clicking the real nav link.
+          const animations = [];
+          ndoc.addEventListener('astro:before-swap', event => {
+            event.viewTransition?.ready?.then(() => {
+              for (const animation of ndoc.getAnimations()) {
+                const target = animation.effect?.target;
+                animations.push(animation.effect?.pseudoElement ||
+                  (target?.closest?.('.banner') ? 'banner element' : target?.localName || '?'));
+              }
+            }, () => {});
+          }, { once: true });
+          const sentinel = `navigation-${Math.random()}`;
+          nwin.__navigationSentinel = sentinel;
+          const oldTitle = ndoc.title;
+          nwin.scrollTo(0, 40);
+          const scrolledBeforeNav = nwin.scrollY;
+          const clickIndex = samples.length;
+          const researchLink = link('.site-nav a[href="/research/"]');
+          researchLink.focus();
+          const toResearch = pageLoad();
+          researchLink.click();
+          await toResearch;
+          const loadIndex = samples.length;
+          await wait(300);
+
+          checks.clientSideNavigation = fullLoads === 0 && nwin.__navigationSentinel === sentinel &&
+            frame.contentDocument === ndoc && nwin.location.pathname === '/research/';
+          checks.canvasPersisted = ndoc.querySelector('#boat-banner') === canvas && canvas.isConnected &&
+            ndoc.querySelectorAll('#boat-banner').length === 1;
+          checks.initOnce = nwin.__bannerInitCount === 1;
+          // Only frames drawn after the new page loaded: until the swap the old page's canvas
+          // draws whether or not it is persisted, so earlier frames prove nothing.
+          const after = samples.slice(loadIndex);
+          const latest = after.at(-1);
+          // The steps across the swap: from the last frame before the click to the latest.
+          let maxStep = 0;
+          for (let index = Math.max(clickIndex, 1); index < samples.length; index++) {
+            maxStep = Math.max(maxStep, Math.hypot(samples[index].x - samples[index - 1].x,
+              samples[index].y - samples[index - 1].y));
+          }
+          info.maxStepPx = Number(maxStep.toFixed(2));
+          info.framesBeforeClickAfterLoad = [clickIndex, after.length];
+          info.queueBeforeAfter = [before.queue, latest?.queue ?? null];
+          // A frame moves the boat at most cruiseSpeed * 0.05 s = 5.6 px.
+          checks.positionContinuous = after.length >= 5 && clickIndex > 0 && maxStep <= 6 &&
+            Math.hypot(latest.x - before.x, latest.y - before.y) > 1;
+          checks.queueContinued = after.length >= 5 && latest.queue > 0 &&
+            after.every(sample => sample.queue <= before.queue);
+          checks.shipUnchanged = after.length >= 5 && after.every(sample => sample.pirate) &&
+            select.value === 'pirate';
+          checks.loopRunning = samples.length - loadIndex >= 5;
+          info.viewTransitionsSupported = typeof ndoc.startViewTransition === 'function';
+          // Which persist path swapBodyElement() took (moveBefore, else appendChild/replaceWith).
+          info.moveBeforeSupported = typeof ndoc.documentElement.moveBefore === 'function';
+          info.transitionAnimations = [...new Set(animations)];
+          // Non-vacuous where view transitions run: the root cross-fade must have been seen.
+          checks.bannerNotAnimated = (!info.viewTransitionsSupported || animations.length > 0) &&
+            !animations.some(name =>
+            name === 'banner element' || String(name).includes('boat-banner'));
+          checks.titleAndCanonicalUpdated = ndoc.title !== oldTitle && ndoc.title.startsWith('Research ·') &&
+            ndoc.querySelectorAll('link[rel="canonical"]').length === 1 &&
+            ndoc.querySelector('link[rel="canonical"]').href === 'https://wensenliu.com/research/';
+          checks.ariaCurrentUpdated = link('.site-nav a[href="/research/"]').getAttribute('aria-current') === 'page' &&
+            !link('.site-nav a[href="/"]').hasAttribute('aria-current');
+          const announcers = ndoc.querySelectorAll('.astro-route-announcer');
+          checks.routeAnnounced = announcers.length === 1 && announcers[0].getAttribute('aria-live') === 'assertive' &&
+            announcers[0].textContent === ndoc.title;
+          checks.scrollResetForward = scrolledBeforeNav > 0 && nwin.scrollY === 0;
+          checks.focusReset = !ndoc.activeElement || ndoc.activeElement === ndoc.body;
+
+          // Page 2: resize, input and off-screen pause still work on the persisted instance.
+          const widthBefore = canvas.getBoundingClientRect().width;
+          frame.width = '900';
+          await wait(300);
+          const dpr = Math.min(nwin.devicePixelRatio || 1, 3);
+          const resized = canvas.getBoundingClientRect();
+          info.resizeWidths = [widthBefore, resized.width, canvas.width, canvas.height, dpr];
+          checks.resizeAfterNav = resized.width < widthBefore - 250 &&
+            canvas.width === Math.round(resized.width * dpr) && canvas.height === Math.round(resized.height * dpr);
+          const queueBeforeTap = samples.at(-1).queue;
+          tap(0.9, 0.7);
+          await wait(100);
+          checks.tapAfterNav = samples.at(-1).queue === Math.min(queueBeforeTap + 1, 8);
+          const bannerBottom = banner.getBoundingClientRect().bottom + nwin.scrollY;
+          nwin.scrollTo(0, bannerBottom + 10);
+          info.offscreenScroll = [nwin.scrollY, Math.round(bannerBottom + 10)];
+          await wait(300);
+          const pausedAt = samples.length;
+          await wait(400);
+          checks.pausesOffscreen = nwin.scrollY >= bannerBottom && samples.length === pausedAt &&
+            samples.at(-1).queue > 0;
+          nwin.scrollTo(0, 0);
+          await wait(400);
+          checks.resumesInView = samples.length > pausedAt + 5;
+
+          // Research -> work detail: Copy BibTeX, then back, then the same detail page again
+          // (the router does not re-run a page's inline script it has already run).
+          const copied = [];
+          const stubClipboard = () => Object.defineProperty(nwin.navigator.clipboard, 'writeText', {
+            configurable: true,
+            value: text => { copied.push(text); return Promise.resolve(); }
+          });
+          const copyWorks = async expectedCopies => {
+            stubClipboard();
+            const button = ndoc.querySelector('.copy-bibtex');
+            if (!button || button.hidden) return false;
+            button.click();
+            await wait(100);
+            const code = button.closest('details').querySelector('code').textContent;
+            return copied.length === expectedCopies && copied.at(-1) === code &&
+              button.closest('details').querySelector('.copy-status').textContent === 'Copied.';
+          };
+          nwin.scrollTo(0, 120);
+          const researchScroll = nwin.scrollY;
+          const toDetail = pageLoad();
+          link('main a[href="/research/placeholder-workshop-paper/"]').click();
+          await toDetail;
+          await wait(100);
+          checks.detailScrollReset = nwin.scrollY === 0 &&
+            nwin.location.pathname === '/research/placeholder-workshop-paper/';
+          checks.copyBibtexAfterNav = await copyWorks(1);
+
+          const back = pageLoad();
+          nwin.history.back();
+          await back;
+          await wait(100);
+          info.backRestoredScroll = [nwin.scrollY, researchScroll];
+          checks.backRestoresScroll = researchScroll > 0 && nwin.location.pathname === '/research/' &&
+            Math.abs(nwin.scrollY - researchScroll) <= 1;
+          const toDetailAgain = pageLoad();
+          link('main a[href="/research/placeholder-workshop-paper/"]').click();
+          await toDetailAgain;
+          await wait(100);
+          checks.copyBibtexRevisit = await copyWorks(2);
+          checks.skipLinkAfterNav = JSON.stringify(await skipLinkResult()) === JSON.stringify(skipBaseline) &&
+            skipBaseline.hash === '#main';
+          info.skipLink = skipBaseline;
+          checks.stillSameDocument = fullLoads === 0 && nwin.__navigationSentinel === sentinel &&
+            ndoc.querySelector('#boat-banner') === canvas && nwin.__bannerInitCount === 1;
+
+          // Detail page -> test page -> a page without a banner -> test page. The last banner
+          // is a new element the persist could not carry over, and the router does not re-run
+          // the component's script, so only its astro:page-load hook can initialise it.
+          const toTestPage = pageLoad();
+          const testPageLink = ndoc.createElement('a');
+          testPageLink.href = '/__banner-test/';
+          ndoc.body.append(testPageLink);
+          testPageLink.click();
+          await toTestPage;
+          await wait(100);
+          checks.returnPersistsBanner = nwin.location.pathname === '/__banner-test/' &&
+            ndoc.querySelector('#boat-banner') === canvas && nwin.__bannerInitCount === 1;
+          const toNoBanner = pageLoad();
+          link('#to-no-banner').click();
+          await toNoBanner;
+          await wait(100);
+          checks.noBannerPageDropsBanner = nwin.location.pathname === '/__banner-test/no-banner/' &&
+            !ndoc.querySelector('.banner, #boat-banner') && !canvas.isConnected;
+          const toBannerAgain = pageLoad();
+          link('#back-to-banner-test').click();
+          await toBannerAgain;
+          const revived = ndoc.querySelector('#boat-banner');
+          const revivedWatch = revived && revived !== canvas ? watchCanvas(revived) : null;
+          await wait(200);
+          info.revived = { initCount: nwin.__bannerInitCount, initFlag: revived?.dataset.bannerInit ?? null };
+          checks.revivedBannerInitialised = fullLoads === 0 && nwin.__navigationSentinel === sentinel &&
+            nwin.location.pathname === '/__banner-test/' && Boolean(revivedWatch) &&
+            revived.dataset.bannerInit === '' && nwin.__bannerInitCount === 2;
+          // An idle banner draws once and stops its loop; a tap queues a waypoint and restarts it.
+          checks.revivedBannerTapQueued = false;
+          checks.revivedBannerLoopRunning = false;
+          if (revivedWatch) {
+            const drawn = revivedWatch.samples;
+            const idleFrames = drawn.length;
+            const queueBefore = drawn.at(-1)?.queue ?? 0;
+            revivedWatch.tap(0.8, 0.6);
+            await wait(400);
+            const underway = drawn.slice(idleFrames);
+            info.revived.frames = [idleFrames, underway.length];
+            info.revived.queue = [queueBefore, underway[0]?.queue ?? null];
+            checks.revivedBannerTapQueued = underway.length > 0 && underway[0].queue === queueBefore + 1;
+            checks.revivedBannerLoopRunning = underway.length >= 5 &&
+              Math.hypot(underway.at(-1).x - underway[0].x, underway.at(-1).y - underway[0].y) > 1;
+          }
+          if (fallback) {
+            // Non-vacuous: this run must really have taken the fallback swap.
+            checks.fallbackPathTaken = !info.viewTransitionsSupported && !info.moveBeforeSupported;
+          }
+        } finally {
+          const label = fallback ? 'navigation fallback frame' : 'navigation frame';
+          for (const error of Array.isArray(errors) ? errors : ['error collector missing']) {
+            pageErrors.push(`${label}: ${error}`);
+          }
+          frame.remove();
+          win.localStorage.removeItem(storageKey);
+        }
+        return { ...checks, info };
+      }
+
+      const navigationChecks = await checkNavigationPersistence();
+      const navigationFallbackChecks = await checkNavigationPersistence({ fallback: true });
+
       // The shipped <BoatBanner /> on the test page, initialized by the component's own
       // script (not by this harness). Runs last: from here on the real instance's frames
       // go through the harness requestAnimationFrame stub.
@@ -480,6 +780,8 @@
         pointerChecks,
         shipChecks,
         componentChecks,
+        navigationChecks,
+        navigationFallbackChecks,
         pageErrors
       };
       window.__done = true;

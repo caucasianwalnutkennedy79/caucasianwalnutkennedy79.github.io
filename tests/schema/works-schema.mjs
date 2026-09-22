@@ -59,9 +59,19 @@ const childEnv = Object.fromEntries(
 );
 childEnv.ASTRO_TELEMETRY_DISABLED = '1';
 
+// The copy reaches node_modules through a symlink. Vite would resolve files in it
+// (e.g. astro/components/ClientRouter.astro) to their real path in the repo,
+// outside the copy's root, and Astro then fails to find their compiled
+// styles ("No cached compile metadata found"). This wrapper config, written
+// only into the copy, keeps the symlinked paths; the real config is otherwise
+// used unchanged.
+const WRAPPER_CONFIG = `import config from './astro.config.mjs';
+export default { ...config, vite: { ...config.vite, resolve: { ...config.vite?.resolve, preserveSymlinks: true } } };
+`;
+
 const astroBuild = () => spawnSync(
   process.execPath,
-  [join(repo, 'node_modules/astro/bin/astro.mjs'), 'build'],
+  [join(repo, 'node_modules/astro/bin/astro.mjs'), 'build', '--config', 'astro.schema-test.config.mjs'],
   { cwd: work, encoding: 'utf8', env: childEnv },
 );
 
@@ -73,6 +83,7 @@ try {
     cpSync(join(repo, entry), join(work, entry), { recursive: true });
   }
   symlinkSync(join(repo, 'node_modules'), join(work, 'node_modules'), 'dir');
+  writeFileSync(join(work, 'astro.schema-test.config.mjs'), WRAPPER_CONFIG);
 
   // 1. Control + partial dates: must build, and render at the given precision.
   for (const { entry: [name, body] } of POSITIVE_CASES) writeFileSync(join(worksDir, `${name}.md`), body);

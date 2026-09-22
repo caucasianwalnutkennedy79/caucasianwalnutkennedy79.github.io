@@ -3,8 +3,13 @@
 // names prefixed `banner-` so they cannot collide with site CSS); styles
 // live in src/styles/global.css (global on purpose, see the note there); the
 // behaviour is the shared module src/scripts/boat-banner.js.
+//
+// The section is persisted across client-side navigations (<ClientRouter /> in
+// BaseLayout), so the voyage carries on between pages; transition:animate="none"
+// keeps it out of the page cross-fade (shown live, never faded).
 ---
-<section class="banner" aria-label="Interactive autonomous surface vessel demonstration">
+<section class="banner" transition:persist="boat-banner" transition:name="boat-banner"
+  transition:animate="none" aria-label="Interactive autonomous surface vessel demonstration">
   <canvas id="boat-banner" tabindex="0" role="img"
     aria-label="Interactive water scene. Click or tap to queue waypoints for an autonomous boat. Press Enter or Space for a random waypoint; Shift-click clears the route."></canvas>
   <p class="banner-hint" id="banner-hint">click the water to set a waypoint</p>
@@ -25,6 +30,18 @@
 <script>
   import { initBoatBanner } from '../scripts/boat-banner.js';
 
-  const canvas = document.querySelector('#boat-banner');
-  if (canvas instanceof HTMLCanvasElement) initBoatBanner(canvas);
+  // The router runs this bundled script once per visit, not once per page. A
+  // persisted canvas keeps its instance across navigations, but a banner the
+  // persist does not carry over (e.g. via a page without one) arrives fresh, so
+  // initialise on every astro:page-load too. The flag keeps a canvas from getting
+  // a second instance (double listeners and loops).
+  function initBanner() {
+    const canvas = document.querySelector('#boat-banner');
+    if (canvas instanceof HTMLCanvasElement && canvas.dataset.bannerInit === undefined) {
+      canvas.dataset.bannerInit = '';
+      initBoatBanner(canvas);
+    }
+  }
+  initBanner();
+  document.addEventListener('astro:page-load', initBanner);
 </script>

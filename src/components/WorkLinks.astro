@@ -8,11 +8,18 @@ interface Props {
 const { work } = Astro.props;
 const { links = {}, bibtex } = work.data;
 const present = LINK_LABELS.filter(([key]) => links[key]);
+// A site-relative link to a non-HTML file (e.g. /papers/x.pdf) must be a normal
+// browser load: <ClientRouter /> would otherwise fetch it as a page and hover
+// prefetch would download it. External links are never routed or prefetched.
+const isSiteFile = (href: string) =>
+  /^\/(?!\/)/.test(href) && /\.(?!html?$)[^./]+$/i.test(href.split(/[?#]/)[0]);
 ---
 {(present.length > 0 || bibtex) && (
   <ul class="links" aria-label="Links">
     {present.map(([key, label]) => (
-      <li><a href={links[key]}>{label}</a></li>
+      <li>{isSiteFile(links[key]!)
+        ? <a href={links[key]} data-astro-reload data-astro-prefetch="false">{label}</a>
+        : <a href={links[key]}>{label}</a>}</li>
     ))}
     {bibtex && (
       <li class="cite-item">
@@ -30,21 +37,31 @@ const present = LINK_LABELS.filter(([key]) => links[key]);
 <script>
   // Progressive enhancement: the BibTeX is readable without JS; the copy
   // button only appears when the Clipboard API is available.
-  for (const button of document.querySelectorAll<HTMLButtonElement>('.copy-bibtex')) {
-    if (!navigator.clipboard) continue;
-    button.hidden = false;
-    button.addEventListener('click', async () => {
-      const details = button.closest('details');
-      const text = details?.querySelector('code')?.textContent ?? '';
-      const status = details?.querySelector('.copy-status');
-      try {
-        await navigator.clipboard.writeText(text);
-        if (status) status.textContent = 'Copied.';
-      } catch {
-        if (status) status.textContent = 'Copy failed — select the text above instead.';
-      }
-    });
+  // Under <ClientRouter /> this script runs at most once per visit (the router
+  // skips inline scripts it has already run), not once per page,
+  // so enhance on every astro:page-load (which also fires on the initial load);
+  // the direct call covers a first client-side visit to a page with this script.
+  // The data-enhanced flag keeps a button from being bound twice.
+  function enhanceCopyButtons() {
+    if (!navigator.clipboard) return;
+    for (const button of document.querySelectorAll<HTMLButtonElement>('.copy-bibtex:not([data-enhanced])')) {
+      button.dataset.enhanced = '';
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        const details = button.closest('details');
+        const text = details?.querySelector('code')?.textContent ?? '';
+        const status = details?.querySelector('.copy-status');
+        try {
+          await navigator.clipboard.writeText(text);
+          if (status) status.textContent = 'Copied.';
+        } catch {
+          if (status) status.textContent = 'Copy failed — select the text above instead.';
+        }
+      });
+    }
   }
+  enhanceCopyButtons();
+  document.addEventListener('astro:page-load', enhanceCopyButtons);
 </script>
 
 <style>

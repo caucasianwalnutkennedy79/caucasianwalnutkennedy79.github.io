@@ -1,0 +1,21 @@
+---
+// TEST-ONLY page, injected at /__banner-test/no-banner/ by astro.config.mjs only
+// when BANNER_TEST=1, like BannerTestPage.astro. It has <ClientRouter /> but no
+// banner, so navigating to it drops the persisted banner; navigationChecks come
+// back to /__banner-test/ from here and check that the fresh banner is initialised.
+// BANNER_TEST_MARKER_7c41e0d9 (leak marker, see BannerTestPage.astro).
+import { ClientRouter } from 'astro:transitions';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>No-banner test page</title>
+    <meta name="robots" content="noindex" />
+    <ClientRouter />
+  </head>
+  <body data-banner-test="BANNER_TEST_MARKER_7c41e0d9">
+    <h1>No-banner test page</h1>
+    <p><a id="back-to-banner-test" href="/__banner-test/">Back to the banner test page</a></p>
+  </body>
+</html>

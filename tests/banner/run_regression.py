@@ -33,6 +33,38 @@ TEST_PAGE = "__banner-test"
 LEAK_MARKER = b"BANNER_TEST_MARKER_7c41e0d9"
 EXPECTED_CASES = 838
 SNAP_FIREFOX = Path("/snap/firefox/current/usr/lib/firefox/firefox")
+# Client-side navigation away from the test page with the real <ClientRouter />.
+NAVIGATION_CHECKS = (
+    "voyageStarted",
+    "clientSideNavigation",
+    "canvasPersisted",
+    "initOnce",
+    "positionContinuous",
+    "queueContinued",
+    "shipUnchanged",
+    "loopRunning",
+    "bannerNotAnimated",
+    "titleAndCanonicalUpdated",
+    "ariaCurrentUpdated",
+    "routeAnnounced",
+    "scrollResetForward",
+    "focusReset",
+    "resizeAfterNav",
+    "tapAfterNav",
+    "pausesOffscreen",
+    "resumesInView",
+    "detailScrollReset",
+    "copyBibtexAfterNav",
+    "backRestoresScroll",
+    "copyBibtexRevisit",
+    "stillSameDocument",
+    "skipLinkAfterNav",
+    "returnPersistsBanner",
+    "noBannerPageDropsBanner",
+    "revivedBannerInitialised",
+    "revivedBannerLoopRunning",
+    "revivedBannerTapQueued",
+)
 EXPECTED_CHECKS = {
     "telemetryChecks": ("wrapsRoundedHeading",),
     "pointerChecks": (
@@ -72,6 +104,10 @@ EXPECTED_CHECKS = {
         "clearStopsRoute",
         "selectPersistsShip",
     ),
+    "navigationChecks": NAVIGATION_CHECKS,
+    # The same with the View Transition API and moveBefore() deleted (?fallback=1):
+    # the router's fallback swap, as in Safari and older browsers.
+    "navigationFallbackChecks": NAVIGATION_CHECKS + ("fallbackPathTaken",),
 }
 
 
@@ -349,7 +385,8 @@ def print_results(browser_version, results, issues):
         print(f"  {name:<8} {status} ({check.get('time', 0):.2f}s)")
 
     print("\nExtra checks")
-    for section_name in ("telemetryChecks", "pointerChecks", "shipChecks", "componentChecks"):
+    for section_name in ("telemetryChecks", "pointerChecks", "shipChecks", "componentChecks",
+                         "navigationChecks", "navigationFallbackChecks"):
         label = section_name[:-6] if section_name.endswith("Checks") else section_name
         for name, value in results.get(section_name, {}).items():
             if isinstance(value, bool):
@@ -359,6 +396,9 @@ def print_results(browser_version, results, issues):
             elif name == "trajectoryLengths":
                 lengths = ", ".join(f"{ship}={count}" for ship, count in value.items())
                 print(f"  {label}.{name}: {lengths}")
+            elif name == "info":
+                for key, detail in value.items():
+                    print(f"  {label}.info.{key}: {json.dumps(detail)}")
 
     page_errors = results.get("pageErrors", [])
     print(f"\nPage errors: {len(page_errors)}")
