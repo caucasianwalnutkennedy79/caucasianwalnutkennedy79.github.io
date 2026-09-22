@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkListItem from '../../components/WorkListItem.astro';
+import { getWorks, ofKind } from '../../lib/works';
+
+const works = await getWorks();
+const publications = ofKind(works, 'paper', 'workshop');
+const theses = ofKind(works, 'thesis');
+const talks = ofKind(works, 'talk');
+---
+<BaseLayout title="Research" description="Publications, theses and talks by Wensen Liu.">
+  <h1>Research</h1>
+
+  <h2>Publications</h2>
+  {publications.length > 0 ? (
+    <ul class="work-list">
+      {publications.map((work) => <WorkListItem work={work} />)}
+    </ul>
+  ) : (
+    <p class="muted">No publications listed yet.</p>
+  )}
+
+  <h2>Theses</h2>
+  {theses.length > 0 ? (
+    <ul class="work-list">
+      {theses.map((work) => <WorkListItem work={work} />)}
+    </ul>
+  ) : (
+    <p class="muted">No theses listed yet.</p>
+  )}
+
+  {talks.length > 0 && (
+    <>
+      <h2>Talks &amp; presentations</h2>
+      <ul class="work-list">
+        {talks.map((work) => <WorkListItem work={work} />)}
+      </ul>
+    </>
+  )}
+</BaseLayout>

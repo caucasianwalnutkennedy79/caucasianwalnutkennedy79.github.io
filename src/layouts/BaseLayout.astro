@@ -1,0 +1,54 @@
+---
+import BoatBanner from '../components/BoatBanner.astro';
+import { NAV, SITE_NAME, TAGLINE } from '../consts';
+import '../styles/global.css';
+
+interface Props {
+  /** Page title; the site name is appended. Omit on the home page. */
+  title?: string;
+  description?: string;
+  /** Omit the canonical link and ask search engines not to index (e.g. the 404 page). */
+  noindex?: boolean;
+}
+
+const { title, description = TAGLINE, noindex = false } = Astro.props;
+const pageTitle = title ? `${title} · ${SITE_NAME}` : `${SITE_NAME} · ${TAGLINE}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+// Nav hrefs end in "/"; `astro dev` also serves e.g. /research without one.
+const path = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+// "page" only for the exact page; "true" marks the section ancestor (e.g. Research
+// on /research/<slug>/). Home is never an ancestor.
+const ariaCurrent = (href: string) =>
+  path === href ? 'page' : href !== '/' && path.startsWith(href) ? 'true' : undefined;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="site-name" href="/">{SITE_NAME}</a>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          {NAV.map(({ href, label }) => (
+            <li><a href={href} aria-current={ariaCurrent(href)}>{label}</a></li>
+          ))}
+        </ul>
+      </nav>
+    </header>
+    <BoatBanner />
+    <main id="main" class="content" tabindex="-1">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>© {new Date().getFullYear()} {SITE_NAME}. Built with Astro.</p>
+    </footer>
+  </body>
+</html>

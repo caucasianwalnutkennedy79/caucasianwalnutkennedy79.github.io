@@ -1,0 +1,43 @@
+---
+// TEST-ONLY page, injected at /__banner-test/ by astro.config.mjs only when
+// BANNER_TEST=1 (npm run test:banner). It never exists in production builds.
+//
+// It renders the real BaseLayout (so the real BoatBanner component, global CSS
+// and colour tokens are present) and exposes the shipped module's
+// initBoatBanner on window, which is what tests/banner/regression.html drives
+// (the prototype harness relied on a classic-script global).
+//
+// The inline script below is a classic script, so it runs while the page is
+// parsed — before the deferred module scripts in which BoatBanner initializes —
+// and collects every page error from then on into window.__bannerTestErrors
+// (capture phase, so failed script/resource loads count too). The harness reads
+// that array and fails if it is missing.
+//
+// The marker string BANNER_TEST_MARKER_7c41e0d9 exists only in test-only code;
+// run_regression.py fails if it appears anywhere in the production dist/ (and
+// checks that it does appear in the test build, so the check cannot go vacuous).
+import BaseLayout from '../../src/layouts/BaseLayout.astro';
+---
+<BaseLayout title="Banner test page">
+  <h1>Banner test page</h1>
+  <script is:inline>
+    window.__bannerTestMarker = 'BANNER_TEST_MARKER_7c41e0d9';
+    window.__bannerTestErrors = [];
+    window.addEventListener('error', (event) => {
+      const target = event.target;
+      window.__bannerTestErrors.push(target && target !== window
+        ? `failed to load <${target.localName}> ${target.src || target.href || ''}`
+        : String(event.error || event.message));
+    }, true);
+    window.addEventListener('unhandledrejection', (event) => {
+      window.__bannerTestErrors.push(`unhandled rejection: ${String(event.reason)}`);
+    });
+  </script>
+</BaseLayout>
+
+<script>
+  import { initBoatBanner } from '../../src/scripts/boat-banner.js';
+
+  (window as unknown as { initBoatBanner: typeof initBoatBanner }).initBoatBanner = initBoatBanner;
+  document.documentElement.dataset.bannerTest = 'BANNER_TEST_MARKER_7c41e0d9';
+</script>

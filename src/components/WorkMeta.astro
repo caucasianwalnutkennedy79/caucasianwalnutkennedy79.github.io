@@ -1,0 +1,32 @@
+---
+import { OWNER_NAME } from '../consts';
+import { formatDate, isoDate, KIND_LABEL, STATUS_LABEL, type Work } from '../lib/works';
+
+interface Props {
+  work: Work;
+  /** Show the kind (e.g. "Thesis") before the other fields. */
+  showKind?: boolean;
+}
+
+const { work, showKind = false } = Astro.props;
+const { authors = [], venue, date, status, kind, draft } = work.data;
+---
+<p class="meta">
+  {showKind && <span>{KIND_LABEL[kind]} · </span>}
+  {authors.length > 0 && (
+    <span>
+      {authors.map((author, index) => (
+        <>
+          {author === OWNER_NAME ? <span class="me">{author}</span> : author}
+          {index < authors.length - 1 ? ', ' : ''}
+        </>
+      ))}
+      {' · '}
+    </span>
+  )}
+  {venue && <span><cite>{venue}</cite> · </span>}
+  <time datetime={isoDate(date)}>{formatDate(date)}</time>
+  {/* Review status is only meaningful for papers and workshop papers. */}
+  {(kind === 'paper' || kind === 'workshop') && <> <span class={`badge badge-${status}`}>{STATUS_LABEL[status]}</span></>}
+  {draft && <> <span class="badge badge-draft">draft</span></>}
+</p>

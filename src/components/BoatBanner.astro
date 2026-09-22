@@ -1,0 +1,30 @@
+---
+// Interactive USV banner. Markup mirrors prototypes/boat-banner.html (class
+// names prefixed `banner-` so they cannot collide with site CSS); styles
+// live in src/styles/global.css (global on purpose, see the note there); the
+// behaviour is the shared module src/scripts/boat-banner.js.
+---
+<section class="banner" aria-label="Interactive autonomous surface vessel demonstration">
+  <canvas id="boat-banner" tabindex="0" role="img"
+    aria-label="Interactive water scene. Click or tap to queue waypoints for an autonomous boat. Press Enter or Space for a random waypoint; Shift-click clears the route."></canvas>
+  <p class="banner-hint" id="banner-hint">click the water to set a waypoint</p>
+  <output class="banner-telemetry" id="banner-telemetry" aria-live="off">HDG 000° · 0 px/s</output>
+  <div class="banner-actions">
+    <div class="banner-ship-picker">
+      <label class="visually-hidden" for="banner-ship">Ship style</label>
+      <select id="banner-ship" class="banner-ship-select">
+        <option value="motorboat">Motorboat</option>
+        <option value="pirate">Pirate ship</option>
+        <option value="catamaran">Catamaran</option>
+      </select>
+    </div>
+    <button class="banner-clear" id="banner-clear" type="button">clear route</button>
+  </div>
+</section>
+
+<script>
+  import { initBoatBanner } from '../scripts/boat-banner.js';
+
+  const canvas = document.querySelector('#boat-banner');
+  if (canvas instanceof HTMLCanvasElement) initBoatBanner(canvas);
+</script>

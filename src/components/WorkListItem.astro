@@ -1,0 +1,16 @@
+---
+import WorkMeta from './WorkMeta.astro';
+import { workUrl, type Work } from '../lib/works';
+
+interface Props {
+  work: Work;
+  showKind?: boolean;
+}
+
+const { work, showKind = false } = Astro.props;
+---
+<li>
+  <h3><a href={workUrl(work)}>{work.data.title}</a></h3>
+  <WorkMeta work={work} showKind={showKind} />
+  <p>{work.data.summary}</p>
+</li>

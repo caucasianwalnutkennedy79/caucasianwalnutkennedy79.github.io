@@ -1,0 +1,30 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkLinks from './WorkLinks.astro';
+import WorkMeta from './WorkMeta.astro';
+import type { Work } from '../lib/works';
+
+interface Props {
+  work: Work;
+}
+
+const { work } = Astro.props;
+const { title, summary, abstract, image, kind } = work.data;
+const { Content } = await render(work);
+---
+<BaseLayout title={title} description={summary}>
+  <article>
+    <h1>{title}</h1>
+    <WorkMeta work={work} showKind />
+    <WorkLinks work={work} />
+    {image && <p><img src={image.src} alt={image.alt} loading="lazy" /></p>}
+
+    <h2>{kind === 'project' ? 'Overview' : 'Abstract'}</h2>
+    <p>{abstract ?? summary}</p>
+
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>

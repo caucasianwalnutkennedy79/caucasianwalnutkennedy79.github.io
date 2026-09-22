@@ -1,0 +1,362 @@
+/*
+ * Global styles.
+ *
+ * Colour tokens: copied from prototypes/boat-banner.html (`:root` + dark block)
+ * so the site and the banner share one calm-water palette. The banner module
+ * reads the water/boat tokens at runtime via getComputedStyle(documentElement),
+ * so they must stay on :root. Tokens under "site additions" are new and are
+ * not used by the banner.
+ */
+:root {
+  color-scheme: light dark;
+  --page: #f7f6f2;
+  --ink: #17252b;
+  --muted: #617178;
+  --water-top: #b9dce0;
+  --water-bottom: #79afb8;
+  --water-line: rgba(255, 255, 255, .18);
+  --route: rgba(23, 55, 64, .5);
+  --wake: rgba(242, 252, 251, .72);
+  --ripple: rgba(255, 255, 255, .9);
+  --hull: #183f4b;
+  --hull-edge: rgba(255, 255, 255, .82);
+  --deck: #d8eceb;
+  --windscreen: #82b9c0;
+  --wood: #8a5a36;
+  --wood-edge: #53351f;
+  --sail: #f3e5bd;
+  --sail-edge: #9d7e4b;
+  --mast: #3e2a1c;
+  --pennant: #d7352c;
+  --pennant-edge: #681b19;
+  --trampoline: rgba(226, 243, 239, .72);
+  --trampoline-line: rgba(24, 63, 75, .35);
+  --overlay: rgba(13, 38, 45, .72);
+  --overlay-text: #f4fbfa;
+  --focus: #17252b;
+
+  /* site additions */
+  --link: #1d5a69;
+  --rule: rgba(23, 37, 43, .14);
+  --surface: #ffffff;
+  --badge-bg: #d8eceb;
+  --badge-ink: #183f4b;
+  --badge-pending-bg: #f3e5bd;
+  --badge-pending-ink: #53351f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #10191d;
+    --ink: #e2eeed;
+    --muted: #9aadaf;
+    --water-top: #164754;
+    --water-bottom: #0a2c38;
+    --water-line: rgba(185, 229, 230, .1);
+    --route: rgba(220, 245, 241, .5);
+    --wake: rgba(205, 241, 238, .62);
+    --ripple: rgba(224, 250, 246, .78);
+    --hull: #d8eceb;
+    --hull-edge: rgba(4, 31, 38, .78);
+    --deck: #245b67;
+    --windscreen: #092f3a;
+    --wood: #b17a4e;
+    --wood-edge: #e4bb82;
+    --sail: #e7d6ae;
+    --sail-edge: #8f6b36;
+    --mast: #f0dfba;
+    --pennant: #ff6f52;
+    --pennant-edge: #5b1716;
+    --trampoline: rgba(173, 216, 211, .58);
+    --trampoline-line: rgba(5, 41, 49, .58);
+    --overlay: rgba(3, 23, 29, .75);
+    --overlay-text: #e8f5f3;
+    --focus: #ffe986;
+
+    /* site additions */
+    --link: #8fd0d6;
+    --rule: rgba(226, 238, 237, .14);
+    --surface: #152227;
+    --badge-bg: #245b67;
+    --badge-ink: #e2eeed;
+    --badge-pending-bg: #5a4526;
+    --badge-pending-ink: #f3e5bd;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--page);
+  font: 17px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: break-word;
+}
+
+a { color: var(--link); text-underline-offset: .15em; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+img { max-width: 100%; height: auto; }
+
+h1, h2, h3 { line-height: 1.2; letter-spacing: -.01em; }
+h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -.035em;
+}
+h2 { margin: 2.2em 0 .6em; font-size: 1.45rem; }
+h3 { margin: 1.4em 0 .3em; font-size: 1.1rem; }
+
+pre, code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .88em; }
+pre { overflow-x: auto; padding: 12px; border-radius: 6px; background: var(--surface); border: 1px solid var(--rule); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Site chrome ---- */
+
+.skip-link {
+  position: absolute;
+  z-index: 10;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  color: var(--overlay-text);
+  background: var(--overlay);
+  transform: translateY(-150%);
+}
+.skip-link:focus { transform: none; }
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 20px;
+  max-width: 70ch;
+  margin: 0 auto;
+  padding: 12px 16px;
+}
+.site-name { font-weight: 650; color: var(--ink); text-decoration: none; }
+.site-nav ul { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0; padding: 0; list-style: none; }
+.site-nav a { color: var(--muted); text-decoration: none; }
+.site-nav a:hover { color: var(--ink); text-decoration: underline; }
+.site-nav a[aria-current] { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; }
+
+.content {
+  max-width: 70ch;
+  margin: 0 auto;
+  padding: 36px 16px 64px;
+}
+.content:focus { outline: none; }
+
+.site-footer {
+  max-width: 70ch;
+  margin: 0 auto;
+  padding: 0 16px;
+  color: var(--muted);
+}
+/* Font size on the child, not the footer, so 70ch matches the header/main width.
+ * The rule is on the child too, so it spans the text column, not the gutters. */
+.site-footer p { margin: 0; padding: 16px 0 32px; border-top: 1px solid var(--rule); font-size: .85rem; }
+
+.lede { margin-top: 0; font-size: 1.15rem; color: var(--muted); }
+.muted { color: var(--muted); }
+
+/* ---- Work lists, cards, detail ---- */
+
+.work-list { margin: 0; padding: 0; list-style: none; }
+.work-list > li { padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.work-list > li:last-child { border-bottom: 0; }
+.work-list h3 { margin: 0 0 4px; }
+.work-list p { margin: 4px 0; }
+
+.meta { color: var(--muted); font-size: .92rem; }
+.meta .me { color: var(--ink); font-weight: 650; }
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  vertical-align: .1em;
+  color: var(--badge-ink);
+  background: var(--badge-bg);
+  white-space: nowrap;
+}
+.badge-under-review, .badge-draft { color: var(--badge-pending-ink); background: var(--badge-pending-bg); }
+
+.links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; padding: 0; list-style: none; font-size: .95rem; }
+
+.cards { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.card {
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.card-body { padding: 14px 16px 16px; }
+.card h2 { margin: 0 0 4px; font-size: 1.2rem; }
+.card p { margin: 4px 0; }
+
+.cite summary { cursor: pointer; color: var(--link); text-decoration: underline; text-underline-offset: .15em; }
+.cite pre { margin: 8px 0 4px; white-space: pre-wrap; }
+.cite button {
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+.prose > :first-child { margin-top: 0; }
+
+.cv-section ul { padding-left: 1.2em; }
+
+/* ---- Boat banner (from prototypes/boat-banner.html) ----
+ * Global rather than Astro-scoped on purpose: the module and tests/banner/
+ * build banner markup at runtime, which would not carry Astro's scoping
+ * attributes. The prototype's bare `canvas` selector is scoped to `.banner`.
+ */
+
+.banner {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  overflow: hidden;
+  background: var(--water-bottom);
+  isolation: isolate;
+}
+
+.banner canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+  cursor: crosshair;
+  outline: none;
+}
+
+.banner canvas:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.banner-hint,
+.banner-telemetry {
+  position: absolute;
+  z-index: 1;
+  color: var(--overlay-text);
+  background: var(--overlay);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.banner-hint {
+  left: 50%;
+  bottom: 18px;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: .02em;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity .45s ease, transform .45s ease;
+  white-space: nowrap;
+}
+
+.banner-hint.dismissed {
+  opacity: 0;
+  transform: translate(-50%, 5px);
+}
+
+.banner-telemetry {
+  top: 14px;
+  left: 14px;
+  min-width: 126px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font: 10px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .04em;
+  pointer-events: none;
+}
+
+.banner-actions {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.banner-clear,
+.banner-ship-picker select {
+  color: var(--overlay-text);
+  background: var(--overlay);
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.banner-clear {
+  padding: 5px 9px;
+}
+
+.banner-clear:hover { filter: brightness(1.12); }
+.banner-clear:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.banner-ship-picker {
+  display: flex;
+}
+
+.banner-ship-picker select {
+  max-width: 118px;
+  padding: 5px 7px;
+}
+
+.banner-ship-picker select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.banner-ship-picker option {
+  color: var(--ink);
+  background: var(--page);
+}
+
+@media (max-width: 600px) {
+  .banner { height: 220px; }
+  .banner-telemetry { top: 10px; left: 10px; }
+  .banner-actions { top: 10px; right: 10px; }
+  .banner-hint { bottom: 12px; }
+  .content { padding-top: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner-hint { transition: none; }
+}

@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkLinks from '../../components/WorkLinks.astro';
+import { getWorks, ofKind, workUrl } from '../../lib/works';
+
+const projects = ofKind(await getWorks(), 'project');
+---
+<BaseLayout title="Projects" description="Projects by Wensen Liu.">
+  <h1>Projects</h1>
+  {projects.length > 0 ? (
+    <ul class="cards">
+      {projects.map((work) => (
+        <li class="card">
+          {work.data.image && <img src={work.data.image.src} alt={work.data.image.alt} loading="lazy" />}
+          <div class="card-body">
+            <h2><a href={workUrl(work)}>{work.data.title}</a></h2>
+            <p>{work.data.summary}</p>
+            <WorkLinks work={work} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="muted">No projects listed yet.</p>
+  )}
+</BaseLayout>

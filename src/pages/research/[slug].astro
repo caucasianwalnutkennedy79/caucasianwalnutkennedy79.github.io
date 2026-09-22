@@ -1,0 +1,15 @@
+---
+import type { GetStaticPaths } from 'astro';
+import WorkDetail from '../../components/WorkDetail.astro';
+import { getWorks, type Work } from '../../lib/works';
+
+export const getStaticPaths = (async () => {
+  const works = await getWorks();
+  return works
+    .filter((work) => work.data.kind !== 'project')
+    .map((work) => ({ params: { slug: work.id }, props: { work } }));
+}) satisfies GetStaticPaths;
+
+const { work } = Astro.props as { work: Work };
+---
+<WorkDetail work={work} />

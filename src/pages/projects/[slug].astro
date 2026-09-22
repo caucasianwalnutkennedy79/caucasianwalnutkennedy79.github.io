@@ -1,0 +1,13 @@
+---
+import type { GetStaticPaths } from 'astro';
+import WorkDetail from '../../components/WorkDetail.astro';
+import { getWorks, ofKind, type Work } from '../../lib/works';
+
+export const getStaticPaths = (async () => {
+  const projects = ofKind(await getWorks(), 'project');
+  return projects.map((work) => ({ params: { slug: work.id }, props: { work } }));
+}) satisfies GetStaticPaths;
+
+const { work } = Astro.props as { work: Work };
+---
+<WorkDetail work={work} />

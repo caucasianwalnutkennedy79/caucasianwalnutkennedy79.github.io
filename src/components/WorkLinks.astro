@@ -1,0 +1,53 @@
+---
+import { LINK_LABELS, type Work } from '../lib/works';
+
+interface Props {
+  work: Work;
+}
+
+const { work } = Astro.props;
+const { links = {}, bibtex } = work.data;
+const present = LINK_LABELS.filter(([key]) => links[key]);
+---
+{(present.length > 0 || bibtex) && (
+  <ul class="links" aria-label="Links">
+    {present.map(([key, label]) => (
+      <li><a href={links[key]}>{label}</a></li>
+    ))}
+    {bibtex && (
+      <li class="cite-item">
+        <details class="cite">
+          <summary>Cite</summary>
+          <pre><code>{bibtex.trim()}</code></pre>
+          <button type="button" class="copy-bibtex" hidden>Copy BibTeX</button>
+          <span class="copy-status muted" role="status"></span>
+        </details>
+      </li>
+    )}
+  </ul>
+)}
+
+<script>
+  // Progressive enhancement: the BibTeX is readable without JS; the copy
+  // button only appears when the Clipboard API is available.
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.copy-bibtex')) {
+    if (!navigator.clipboard) continue;
+    button.hidden = false;
+    button.addEventListener('click', async () => {
+      const details = button.closest('details');
+      const text = details?.querySelector('code')?.textContent ?? '';
+      const status = details?.querySelector('.copy-status');
+      try {
+        await navigator.clipboard.writeText(text);
+        if (status) status.textContent = 'Copied.';
+      } catch {
+        if (status) status.textContent = 'Copy failed — select the text above instead.';
+      }
+    });
+  }
+</script>
+
+<style>
+  .cite-item:has(details[open]) { flex-basis: 100%; }
+  .copy-status { margin-left: 8px; font-size: .85rem; }
+</style>

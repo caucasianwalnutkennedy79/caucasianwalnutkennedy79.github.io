@@ -1,0 +1,30 @@
+{
+  "name": "wensenliu-website",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "test:banner": "npm run build && BANNER_TEST=1 astro build --outDir .banner-test-dist && python3 tests/banner/run_regression.py",
+    "test:schema": "node tests/schema/works-schema.mjs",
+    "check": "astro check",
+    "test:headings": "node tests/headings/check-headings.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.3.3"
+  },
+  "allowScripts": {
+    "esbuild": true
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/node": "^24.13.6",
+    "typescript": "^6.0.3"
+  }
+}

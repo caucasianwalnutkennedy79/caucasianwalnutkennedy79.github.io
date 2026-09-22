@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkListItem from '../components/WorkListItem.astro';
+import { SITE_NAME, TAGLINE } from '../consts';
+import { getWorks } from '../lib/works';
+
+const featured = (await getWorks()).filter((work) => work.data.featured);
+---
+<BaseLayout>
+  <h1>{SITE_NAME}</h1>
+  <p class="lede">{TAGLINE}</p>
+  <p>
+    Placeholder introduction — replace me. One or two sentences on research in
+    autonomous uncrewed surface vessels (USVs).
+  </p>
+
+  <h2>Featured work</h2>
+  {featured.length > 0 ? (
+    <ul class="work-list">
+      {featured.map((work) => <WorkListItem work={work} showKind />)}
+    </ul>
+  ) : (
+    <p class="muted">Nothing featured yet.</p>
+  )}
+</BaseLayout>

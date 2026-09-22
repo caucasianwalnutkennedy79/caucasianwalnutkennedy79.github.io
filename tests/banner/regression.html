@@ -1,0 +1,493 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Boat banner regression harness (built site)</title>
+<!--
+  Copy of prototypes/tests/regression.html adapted to the built site; the checks are unchanged.
+  Differences: the main iframe loads the test-only page /__banner-test/ (real layout +
+  window.initBoatBanner from src/scripts/boat-banner.js), the reload-persistence probe loads
+  the shipped home page "/", page errors come from the test page's early collector, and
+  componentChecks exercise the page's real, component-initialized <BoatBanner />.
+  Served by tests/banner/run_regression.py; never part of dist/.
+-->
+<iframe id="source" src="/__banner-test/" width="1200" height="700"></iframe>
+<pre id="output">running</pre>
+<script>
+  const frame = document.querySelector('#source');
+  const output = document.querySelector('#output');
+
+  frame.addEventListener('load', async () => {
+    try {
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      if (typeof win.initBoatBanner !== 'function') {
+        throw new Error('initBoatBanner is not exposed; is this a BANNER_TEST=1 build?');
+      }
+      // Collected by the test page's own inline script from the start of page load
+      // (errors thrown while the real BoatBanner initializes happen before 'load').
+      const pageErrors = win.__bannerTestErrors;
+      if (!Array.isArray(pageErrors)) {
+        throw new Error('window.__bannerTestErrors is missing; the early error collector did not run');
+      }
+
+      let nextFrameId = 1;
+      let virtualNow = 1000;
+      const callbacks = new Map();
+      win.requestAnimationFrame = callback => {
+        const id = nextFrameId++;
+        callbacks.set(id, callback);
+        return id;
+      };
+      win.cancelAnimationFrame = id => callbacks.delete(id);
+
+      const testBanner = doc.createElement('header');
+      testBanner.className = 'banner';
+      testBanner.style.width = '1000px';
+      testBanner.style.height = '320px';
+      testBanner.innerHTML = `
+        <canvas tabindex="0"></canvas>
+        <p class="banner-hint"></p>
+        <output class="banner-telemetry"></output>
+        <div class="banner-ship-picker"><label for="test-ship">Ship</label><select id="test-ship" class="banner-ship-select">
+          <option value="motorboat">Motorboat</option>
+          <option value="pirate">Pirate ship</option>
+          <option value="catamaran">Catamaran</option>
+        </select></div>
+        <button class="banner-clear" type="button"></button>`;
+      doc.body.append(testBanner);
+      const canvas = testBanner.querySelector('canvas');
+      const banner = win.initBoatBanner(canvas, { testMode: true });
+
+      function drain(maxSeconds = 90, onFrame) {
+        const start = virtualNow;
+        const maxFrames = Math.ceil(maxSeconds * 60) + 2;
+        let frames = 0;
+        while (callbacks.size && frames < maxFrames) {
+          const [id, callback] = callbacks.entries().next().value;
+          callbacks.delete(id);
+          virtualNow += 1000 / 60;
+          callback(virtualNow);
+          onFrame?.();
+          frames++;
+        }
+        return {
+          elapsed: (virtualNow - start) / 1000,
+          frames,
+          timedOut: callbacks.size > 0
+        };
+      }
+
+      function advanceFrames(count) {
+        for (let frame = 0; frame < count && callbacks.size; frame++) {
+          const [id, callback] = callbacks.entries().next().value;
+          callbacks.delete(id);
+          virtualNow += 1000 / 60;
+          callback(virtualNow);
+        }
+      }
+
+      const cases = [];
+      function runCase(label, initialSpeed, points, group) {
+        banner.test.reset({ x: 500, y: 160, psi: 0, u: initialSpeed });
+        for (const [x, y] of points) banner.test.enqueue(x, y);
+        let previousQueueLength = points.length;
+        const transitions = [];
+        const run = drain(90, () => {
+          const current = banner.test.snapshot();
+          if (current.queueLength < previousQueueLength && current.queueLength > 0) {
+            const reachedIndex = points.length - previousQueueLength;
+            transitions.push({
+              speed: current.u,
+              distance: Math.hypot(current.x - points[reachedIndex][0],
+                current.y - points[reachedIndex][1])
+            });
+          }
+          previousQueueLength = current.queueLength;
+        });
+        const state = banner.test.snapshot();
+        const continuous = transitions.every(item => item.speed > 0.05 && item.distance > 0.0001);
+        const passed = !run.timedOut && state.queueLength === 0 && state.u === 0 &&
+          !state.running && !state.active && continuous;
+        cases.push({ label, group, initialSpeed, time: run.elapsed, passed, state, transitions });
+      }
+
+      function captureTrajectory(ship) {
+        virtualNow = 1000;
+        banner.test.reset({ x: 500, y: 160, psi: 0, u: 112 });
+        banner.setShip(ship);
+        banner.test.enqueue(500, 205);
+        banner.test.enqueue(575, 105);
+        banner.test.enqueue(650, 170);
+        const samples = [];
+        const run = drain(90, () => {
+          const state = banner.test.snapshot();
+          samples.push([state.x, state.y, state.psi, state.u]);
+        });
+        return { samples, run, state: banner.test.snapshot() };
+      }
+
+      const trajectories = Object.fromEntries(['motorboat', 'pirate', 'catamaran']
+        .map(ship => [ship, captureTrajectory(ship)]));
+      const referenceTrajectory = JSON.stringify(trajectories.motorboat.samples);
+      const shipChecks = {
+        trajectoryIdentical: ['pirate', 'catamaran'].every(ship =>
+          JSON.stringify(trajectories[ship].samples) === referenceTrajectory),
+        trajectoryLengths: Object.fromEntries(Object.entries(trajectories)
+          .map(([ship, result]) => [ship, result.samples.length])),
+        trajectoriesSettled: Object.values(trajectories).every(result =>
+          !result.run.timedOut && result.state.queueLength === 0 && result.state.u === 0 &&
+          !result.state.running && !result.state.active)
+      };
+
+      virtualNow = 1000;
+      banner.test.reset({ x: 500, y: 160, psi: 0, u: 112, reducedMotion: false });
+      banner.setShip('motorboat');
+      banner.test.enqueue(800, 160);
+      advanceFrames(45);
+      const beforeSwitch = banner.test.snapshot();
+      banner.setShip('pirate');
+      const afterSwitch = banner.test.snapshot();
+      shipChecks.midVoyageSwitchPreservesState = beforeSwitch.ringCount > 0 &&
+        ['x', 'y', 'psi', 'u', 'queueLength', 'ringCount', 'running', 'active']
+          .every(key => beforeSwitch[key] === afterSwitch[key]);
+      banner.test.reset();
+      banner.setShip('catamaran');
+      shipChecks.stoppedSwitchStaysIdle = !banner.test.snapshot().running && callbacks.size === 0;
+
+      for (const initialSpeed of [0, 112]) {
+        for (const side of [-1, 1]) {
+          for (const distance of [12, 20, 30, 40, 60, 90]) {
+            runCase(`side ${side < 0 ? 'left' : 'right'} ${distance}`, initialSpeed,
+              [[500, 160 + side * distance]], 'side');
+          }
+        }
+        for (const distance of [12, 30, 90]) {
+          runCase(`behind ${distance}`, initialSpeed, [[500 - distance, 160]], 'behind');
+        }
+        runCase('very close ahead', initialSpeed, [[502, 160]], 'close');
+        runCase('very close aft-quarter', initialSpeed, [[495, 165]], 'close');
+        runCase('inside acceptance lateral', initialSpeed, [[500, 168]], 'close');
+        runCase('multi-waypoint turning route', initialSpeed,
+          [[500, 190], [545, 190], [545, 125], [620, 160]], 'multi');
+      }
+
+      let seed = 0x5eed1234;
+      const random = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 0x100000000;
+      };
+      for (const initialSpeed of [0, 112]) {
+        for (let index = 0; index < 400; index++) {
+          const radius = 1 + 149 * Math.sqrt(random());
+          const angle = -Math.PI + 2 * Math.PI * random();
+          runCase(`random ${index}`, initialSpeed,
+            [[500 + radius * Math.cos(angle), 160 + radius * Math.sin(angle)]], 'random');
+        }
+      }
+
+      const resizeChecks = { cases: {} };
+      function runResizeEdge(label, point) {
+        banner.test.reset();
+        testBanner.style.width = '800px';
+        testBanner.style.height = '320px';
+        banner.test.resize();
+        banner.test.reset({ x: 400, y: 160, psi: 0, u: 0 });
+        banner.test.enqueue(point[0], point[1]);
+        testBanner.style.width = '360px';
+        testBanner.style.height = '220px';
+        banner.test.resize();
+        const run = drain(90);
+        const state = banner.test.snapshot();
+        resizeChecks.cases[label] = {
+          passed: !run.timedOut && state.queueLength === 0 && state.u === 0 &&
+            !state.running && !state.active,
+          time: run.elapsed
+        };
+      }
+      runResizeEdge('left', [27.7, 160]);
+      runResizeEdge('right', [772.3, 160]);
+      runResizeEdge('top', [400, 27.7]);
+      runResizeEdge('bottom', [400, 292.3]);
+      resizeChecks.allArrive = Object.values(resizeChecks.cases).every(result => result.passed);
+      testBanner.style.width = '1000px';
+      testBanner.style.height = '320px';
+      banner.test.resize();
+
+      banner.test.reset({ psi: 359.6 * Math.PI / 180 });
+      banner.test.draw();
+      const telemetryChecks = {
+        wrapsRoundedHeading: testBanner.querySelector('.banner-telemetry').value.startsWith('HDG 000°')
+      };
+
+      const pennantSamples = [0, 28, 56, 84, 112].flatMap(speed =>
+        [0, 0.25, 0.5, 0.75].map(time => banner.test.pennantGeometry(speed, time, false)));
+      const restPennant = banner.test.pennantGeometry(0, 0, false);
+      const cruisePennant = banner.test.pennantGeometry(112, 0, false);
+      shipChecks.pennantFixedLength = restPennant.flagLength === cruisePennant.flagLength;
+      shipChecks.pennantAlwaysAft = pennantSamples.every(pennant =>
+        pennant.tipX < pennant.hoistX && pennant.notchX < pennant.hoistX);
+      const staticPennantA = banner.test.pennantGeometry(112, 0, true);
+      const staticPennantB = banner.test.pennantGeometry(112, 0.75, true);
+      shipChecks.reducedMotionPennantStatic = staticPennantA.tipY === staticPennantB.tipY;
+      const stoppedPennantA = banner.test.pennantGeometry(0, 0, false);
+      const stoppedPennantB = banner.test.pennantGeometry(0, 0.75, false);
+      shipChecks.stoppedPennantStatic = stoppedPennantA.tipY === stoppedPennantB.tipY;
+
+      function dispatchPointer(type, x, y, timeStamp, options = {}) {
+        const event = new win.PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: options.pointerId || 41,
+          pointerType: options.pointerType || 'touch',
+          isPrimary: true,
+          button: 0,
+          clientX: x,
+          clientY: y,
+          shiftKey: Boolean(options.shiftKey)
+        });
+        Object.defineProperty(event, 'timeStamp', { value: timeStamp });
+        (options.target || canvas).dispatchEvent(event);
+      }
+
+      canvas.setPointerCapture = () => {};
+      canvas.hasPointerCapture = () => false;
+      const pointerChecks = {};
+      banner.test.reset();
+      dispatchPointer('pointerdown', 600, 160, 100);
+      dispatchPointer('pointerup', 603, 164, 250);
+      pointerChecks.tapQueued = banner.test.snapshot().queueLength === 1;
+
+      banner.test.reset();
+      dispatchPointer('pointerdown', 600, 160, 100);
+      dispatchPointer('pointermove', 602, 185, 180);
+      dispatchPointer('pointerup', 603, 164, 250);
+      pointerChecks.swipeIgnored = banner.test.snapshot().queueLength === 0;
+
+      banner.test.reset();
+      dispatchPointer('pointerdown', 600, 160, 100);
+      dispatchPointer('pointerup', 600, 160, 500);
+      pointerChecks.longPressIgnored = banner.test.snapshot().queueLength === 0;
+
+      banner.test.reset();
+      dispatchPointer('pointerdown', 600, 160, 100);
+      dispatchPointer('pointercancel', 600, 160, 150);
+      dispatchPointer('pointerup', 600, 160, 200);
+      pointerChecks.cancelIgnored = banner.test.snapshot().queueLength === 0;
+
+      banner.test.reset();
+      banner.test.enqueue(620, 160);
+      dispatchPointer('pointerdown', 600, 160, 100, { pointerType: 'mouse', shiftKey: true });
+      dispatchPointer('pointerup', 600, 160, 150, { pointerType: 'mouse', shiftKey: true });
+      pointerChecks.shiftClears = banner.test.snapshot().queueLength === 0;
+
+      banner.test.reset();
+      canvas.dispatchEvent(new win.KeyboardEvent('keydown', {
+        key: 'Enter', repeat: true, bubbles: true, cancelable: true
+      }));
+      pointerChecks.keyRepeatIgnored = banner.test.snapshot().queueLength === 0;
+      pointerChecks.touchAction = win.getComputedStyle(canvas).touchAction;
+
+      const shipSelect = testBanner.querySelector('.banner-ship-select');
+      banner.test.reset();
+      shipSelect.dispatchEvent(new win.PointerEvent('pointerdown', {
+        bubbles: true, pointerId: 77, pointerType: 'touch', isPrimary: true, button: 0
+      }));
+      shipSelect.value = 'pirate';
+      shipSelect.dispatchEvent(new win.Event('change', { bubbles: true }));
+      shipSelect.dispatchEvent(new win.PointerEvent('pointerup', {
+        bubbles: true, pointerId: 77, pointerType: 'touch', isPrimary: true, button: 0
+      }));
+      shipChecks.selectDoesNotQueue = banner.test.snapshot().queueLength === 0;
+      shipSelect.dispatchEvent(new win.KeyboardEvent('keydown', {
+        key: 'Enter', bubbles: true, cancelable: true
+      }));
+      shipSelect.dispatchEvent(new win.KeyboardEvent('keydown', {
+        key: ' ', bubbles: true, cancelable: true
+      }));
+      shipChecks.selectKeysDoNotQueue = banner.test.snapshot().queueLength === 0;
+
+      const capped = win.initBoatBanner(testBanner.cloneNode(true).querySelector('canvas'), {
+        testMode: true,
+        waypointLimit: 1
+      });
+      // The clone is detached and intentionally has a zero rect: initialization must leave it safe.
+      pointerChecks.zeroSizeSafe = capped.test.snapshot().x === 0 && capped.test.snapshot().y === 0;
+      capped.test.reset();
+      capped.test.enqueue(20, 20);
+      capped.test.enqueue(30, 30);
+      capped.test.enqueue(40, 40);
+      pointerChecks.waypointLimitClamped = capped.test.snapshot().queueLength === 2;
+      capped.destroy();
+
+      const storageKey = 'portfolio.boatBanner.ship';
+      win.localStorage.setItem(storageKey, 'not-a-ship');
+      const bogusRoot = testBanner.cloneNode(true);
+      const bogus = win.initBoatBanner(bogusRoot.querySelector('canvas'), { testMode: true });
+      shipChecks.bogusStorageFallsBack = bogus.test.snapshot().ship === 'motorboat' &&
+        bogusRoot.querySelector('.banner-ship-select').value === 'motorboat' &&
+        win.localStorage.getItem(storageKey) === 'not-a-ship';
+      bogus.destroy();
+
+      win.localStorage.setItem(storageKey, 'pirate');
+      const optionRoot = testBanner.cloneNode(true);
+      const optionShip = win.initBoatBanner(optionRoot.querySelector('canvas'), {
+        testMode: true,
+        ship: 'catamaran'
+      });
+      shipChecks.storedShipOverridesOption = optionShip.test.snapshot().ship === 'pirate' &&
+        win.localStorage.getItem(storageKey) === 'pirate';
+      optionShip.destroy();
+
+      win.localStorage.removeItem(storageKey);
+      const optionOnlyRoot = testBanner.cloneNode(true);
+      const optionOnly = win.initBoatBanner(optionOnlyRoot.querySelector('canvas'), {
+        testMode: true,
+        ship: 'catamaran'
+      });
+      shipChecks.optionAppliesWithoutPersisting = optionOnly.test.snapshot().ship === 'catamaran' &&
+        win.localStorage.getItem(storageKey) === null;
+      optionOnly.destroy();
+
+      win.localStorage.setItem(storageKey, 'pirate');
+      const invalidApiRoot = testBanner.cloneNode(true);
+      const invalidApi = win.initBoatBanner(invalidApiRoot.querySelector('canvas'), {
+        testMode: true
+      });
+      const invalidResult = invalidApi.setShip('not-a-ship');
+      shipChecks.bogusApiShipIgnored = invalidResult === 'pirate' &&
+        invalidApi.test.snapshot().ship === 'pirate' &&
+        win.localStorage.getItem(storageKey) === 'pirate';
+      invalidApi.destroy();
+
+      const ownStorage = Object.getOwnPropertyDescriptor(win, 'localStorage');
+      try {
+        Object.defineProperty(win, 'localStorage', {
+          configurable: true,
+          get() { throw new Error('storage blocked for test'); }
+        });
+        const blockedRoot = testBanner.cloneNode(true);
+        const blocked = win.initBoatBanner(blockedRoot.querySelector('canvas'), { testMode: true });
+        shipChecks.blockedStorageSafe = blocked.test.snapshot().ship === 'motorboat' &&
+          blocked.setShip('pirate') === 'pirate';
+        blocked.destroy();
+      } catch {
+        shipChecks.blockedStorageSafe = false;
+      } finally {
+        if (ownStorage) Object.defineProperty(win, 'localStorage', ownStorage);
+        else delete win.localStorage;
+      }
+
+      async function checkPersistenceAcrossReload() {
+        win.localStorage.removeItem(storageKey);
+        return new Promise((resolve, reject) => {
+          const probe = document.createElement('iframe');
+          probe.hidden = true;
+          let phase = 0;
+          const timeout = setTimeout(() => {
+            probe.remove();
+            reject(new Error('persistence reload timed out'));
+          }, 10000);
+          probe.addEventListener('load', () => {
+            try {
+              const select = probe.contentDocument.querySelector('.banner-ship-select');
+              if (phase === 0) {
+                phase = 1;
+                select.value = 'pirate';
+                select.dispatchEvent(new probe.contentWindow.Event('change', { bubbles: true }));
+                probe.contentWindow.location.reload();
+              } else {
+                clearTimeout(timeout);
+                const persisted = select.value === 'pirate';
+                probe.remove();
+                resolve(persisted);
+              }
+            } catch (error) {
+              clearTimeout(timeout);
+              probe.remove();
+              reject(error);
+            }
+          });
+          probe.src = `/?persistence=${Date.now()}`;
+          document.body.append(probe);
+        });
+      }
+
+      shipChecks.persistsAcrossReload = await checkPersistenceAcrossReload();
+
+      // The shipped <BoatBanner /> on the test page, initialized by the component's own
+      // script (not by this harness). Runs last: from here on the real instance's frames
+      // go through the harness requestAnimationFrame stub.
+      const componentChecks = {};
+      const realCanvas = doc.querySelector('#boat-banner');
+      const realRoot = realCanvas?.closest('.banner');
+      const realHint = realRoot?.querySelector('.banner-hint');
+      const realTelemetry = realRoot?.querySelector('.banner-telemetry');
+      const realSelect = realRoot?.querySelector('.banner-ship-select');
+      const realClear = realRoot?.querySelector('.banner-clear');
+      componentChecks.elementsPresent = Boolean(realCanvas && realHint && realTelemetry &&
+        realSelect && realClear);
+      if (componentChecks.elementsPresent) {
+        // An uninitialized canvas keeps the default 300x150 backing store; resize() sizes
+        // it to the CSS box times devicePixelRatio (capped at 3).
+        const rect = realCanvas.getBoundingClientRect();
+        const dpr = Math.min(win.devicePixelRatio || 1, 3);
+        componentChecks.backingStoreSized = rect.width > 0 && rect.height > 0 &&
+          realCanvas.width === Math.round(rect.width * dpr) &&
+          realCanvas.height === Math.round(rect.height * dpr);
+
+        realCanvas.setPointerCapture = () => {};
+        realCanvas.hasPointerCapture = () => false;
+        const tapX = rect.left + rect.width * 0.85;
+        const tapY = rect.top + rect.height * 0.5;
+        const idleTelemetry = realTelemetry.value;
+        dispatchPointer('pointerdown', tapX, tapY, 100, { target: realCanvas });
+        dispatchPointer('pointerup', tapX, tapY, 250, { target: realCanvas });
+        // enqueueWaypoint() dismisses the hint synchronously.
+        componentChecks.tapQueuesWaypoint = realHint.classList.contains('dismissed');
+        advanceFrames(20);
+        componentChecks.telemetryUpdates = realTelemetry.value !== idleTelemetry &&
+          /^HDG \d{3}° · [1-9]\d* px\/s$/.test(realTelemetry.value);
+        // Far waypoint: without a working clear button the boat is still under way after 90 frames.
+        realClear.click();
+        advanceFrames(90);
+        componentChecks.clearStopsRoute = componentChecks.telemetryUpdates &&
+          / 0 px\/s$/.test(realTelemetry.value);
+
+        const shipBefore = win.localStorage.getItem(storageKey);
+        const otherShip = shipBefore === 'catamaran' ? 'pirate' : 'catamaran';
+        realSelect.value = otherShip;
+        realSelect.dispatchEvent(new win.Event('change', { bubbles: true }));
+        componentChecks.selectPersistsShip = win.localStorage.getItem(storageKey) === otherShip;
+        win.localStorage.removeItem(storageKey);
+      }
+
+      const failures = cases.filter(test => !test.passed);
+      const worst = cases.reduce((current, test) => test.time > current.time ? test : current, cases[0]);
+      const byGroup = Object.fromEntries(['side', 'behind', 'close', 'multi', 'random'].map(group => {
+        const selected = cases.filter(test => test.group === group);
+        const slowest = selected.reduce((current, test) => test.time > current.time ? test : current);
+        return [group, { count: selected.length, failures: selected.filter(test => !test.passed).length,
+          worstTime: slowest.time, worstLabel: slowest.label, worstInitialSpeed: slowest.initialSpeed }];
+      }));
+
+      window.__results = {
+        total: cases.length,
+        failures: failures.slice(0, 20),
+        worst: { label: worst.label, group: worst.group, time: worst.time,
+          initialSpeed: worst.initialSpeed },
+        byGroup,
+        resizeChecks,
+        telemetryChecks,
+        pointerChecks,
+        shipChecks,
+        componentChecks,
+        pageErrors
+      };
+      window.__done = true;
+      output.textContent = JSON.stringify(window.__results, null, 2);
+    } catch (error) {
+      window.__done = true;
+      window.__results = { harnessError: String(error), stack: error.stack };
+      output.textContent = JSON.stringify(window.__results, null, 2);
+    }
+  });
+</script>

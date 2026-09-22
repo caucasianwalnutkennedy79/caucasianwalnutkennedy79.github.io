@@ -1,0 +1,53 @@
+---
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkMeta from '../components/WorkMeta.astro';
+import { getWorks, ofKind, workUrl } from '../lib/works';
+
+// The download link appears only when public/cv.pdf exists at build time.
+// Astro runs from the project root (npm scripts, CI), so resolve from cwd.
+const hasPdf = existsSync(join(process.cwd(), 'public', 'cv.pdf'));
+const publications = ofKind(await getWorks(), 'paper', 'workshop');
+---
+<BaseLayout title="CV" description="Curriculum vitae of Wensen Liu.">
+  <h1>CV</h1>
+  {hasPdf && <p><a href="/cv.pdf" download>Download PDF</a></p>}
+
+  <section class="cv-section" aria-labelledby="cv-education">
+    <h2 id="cv-education">Education</h2>
+    <ul>
+      <li>Placeholder degree — replace me. <span class="muted">Institution, years</span></li>
+    </ul>
+  </section>
+
+  <section class="cv-section" aria-labelledby="cv-experience">
+    <h2 id="cv-experience">Experience</h2>
+    <ul>
+      <li>Placeholder role — replace me. <span class="muted">Organisation, years</span></li>
+    </ul>
+  </section>
+
+  <section class="cv-section" aria-labelledby="cv-publications">
+    <h2 id="cv-publications">Publications</h2>
+    {publications.length > 0 ? (
+      <ul>
+        {publications.map((work) => (
+          <li>
+            <a href={workUrl(work)}>{work.data.title}</a>
+            <WorkMeta work={work} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="muted">No publications listed yet.</p>
+    )}
+  </section>
+
+  <section class="cv-section" aria-labelledby="cv-skills">
+    <h2 id="cv-skills">Skills</h2>
+    <ul>
+      <li>Placeholder skills — replace me.</li>
+    </ul>
+  </section>
+</BaseLayout>
