@@ -39,7 +39,8 @@
     const canvas = document.querySelector('#boat-banner');
     if (canvas instanceof HTMLCanvasElement && canvas.dataset.bannerInit === undefined) {
       canvas.dataset.bannerInit = '';
-      initBoatBanner(canvas);
+      // Pirate ship by default; a visitor's saved choice still wins.
+      initBoatBanner(canvas, { ship: 'pirate' });
     }
   }
   initBanner();

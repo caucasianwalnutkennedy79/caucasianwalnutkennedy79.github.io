@@ -28,3 +28,6 @@ pnpm-debug.log*
 
 # python
 __pycache__/
+
+# handoff
+HANDOFF.md
